@@ -1,0 +1,34 @@
+# Node modules
+node_modules/
+npm-debug.log
+package-lock.json
+
+# Truffle artifacts
+/build/
+*.json
+
+# Hardhat artifacts
+artifacts/
+cache/
+
+# Logs
+*.log
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Coverage reports
+coverage/
+*.lcov
+
+# Miscellaneous
+.DS_Store
+Thumbs.db
