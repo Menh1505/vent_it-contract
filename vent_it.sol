@@ -34,8 +34,18 @@ contract MessageContract {
         emit MessageSent(msg.sender, recipient, content);
     }
 
-    // Hàm để lấy danh sách tin nhắn cho một địa chỉ ví nhận
-    function getMessages(address recipient) external view returns (Message[] memory) {
-        return messages[recipient];
+    // Các thư viện như ethers.js hoặc web3.js có thể gặp khó khăn trong việc giải mã mảng các cấu trúc, đặc biệt khi chúng chứa chuỗi (string).
+    function getMessages(address recipient) external view returns (address[] memory senders, string[] memory contents, uint256[] memory timestamps) {
+    uint256 messageCount = messages[recipient].length;
+    senders = new address[](messageCount);
+    contents = new string[](messageCount);
+    timestamps = new uint256[](messageCount);
+
+    for (uint256 i = 0; i < messageCount; i++) {
+        Message storage message = messages[recipient][i];
+        senders[i] = message.sender;
+        contents[i] = message.content;
+        timestamps[i] = message.timestamp;
+        }
     }
 }
