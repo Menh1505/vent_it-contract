@@ -12,6 +12,9 @@ contract MessageContract {
     // Mapping để lưu trữ danh sách tin nhắn cho mỗi địa chỉ ví nhận
     mapping(address => Message[]) private messages;
 
+    // Mapping to store a list of messages sent by each sender
+    mapping(address => Message[]) private sentMessages;
+
     // Sự kiện để thông báo khi một tin nhắn mới được gửi
     event MessageSent(address indexed sender, address indexed recipient, string content);
 
@@ -30,6 +33,9 @@ contract MessageContract {
         // Lưu tin nhắn vào mapping
         messages[recipient].push(newMessage);
 
+        // Lưu tin nhắn vào mapping của người gửi
+        sentMessages[msg.sender].push(newMessage);
+
         // Phát sự kiện
         emit MessageSent(msg.sender, recipient, content);
     }
@@ -47,5 +53,10 @@ contract MessageContract {
         contents[i] = message.content;
         timestamps[i] = message.timestamp;
         }
+    }
+
+    // Function to get all messages sent by a specific sender
+    function getSentMessages() external view returns (Message[] memory) {
+        return sentMessages[msg.sender];
     }
 }
