@@ -1,122 +1,86 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./VentPost.sol"; // Import contract VentPost
-
-contract VentProfile {
-    struct User {
-        string name;
-        string avatar;
-        string bio;
-        uint256 birthday; // Timestamp của ngày sinh
-        uint256 jointTime; // Timestamp của ngày tham gia
-        address addr;
-        uint256 n_follower;
-        uint256 n_following;
+contract VentPost {
+    struct Post {
+        uint256 id;
+        address user;        // Người tạo bài viết
+        string media;        // Media đính kèm
+        string content;      // Nội dung bài viết
+        uint256 timestamp;   // Thời gian tạo
+        uint256 commentCount; // Số lượng bình luận
     }
 
-    mapping(address => User) public users; // Mapping từ địa chỉ tới thông tin người dùng
-    mapping(address => mapping(uint256 => address)) private followers; // Lưu trữ danh sách followers
-    mapping(address => mapping(uint256 => address)) private followings; // Lưu trữ danh sách following
-    mapping(address => uint256) public followerCount; // Số lượng followers của mỗi người dùng
-    mapping(address => uint256) public followingCount; // Số lượng followings của mỗi người dùng
-
-    address[] public userAddresses; // Danh sách địa chỉ của tất cả người dùng
-
-    function getUser(address addr) public view returns (User memory) {
-        return users[addr];
-    }
-    // Tạo hồ sơ người dùng mới
-    function createUser(
-        string memory _name,
-        string memory _avatar,
-        string memory _bio,
-        uint256 _birthday
-    ) public {
-        require(
-            bytes(users[msg.sender].name).length == 0,
-            "User already exists"
-        );
-
-        User storage newUser = users[msg.sender];
-        newUser.name = _name;
-        newUser.avatar = _avatar;
-        newUser.bio = _bio;
-        newUser.birthday = _birthday;
-        newUser.jointTime = block.timestamp; // Lấy timestamp hiện tại làm ngày tham gia
-        newUser.addr = msg.sender;
-
-        userAddresses.push(msg.sender); // Thêm địa chỉ người dùng vào danh sách
+    struct Comment {
+        address user;        // Người tạo bình luận
+        string media;        // Media đính kèm
+        string content;      // Nội dung bình luận
+        uint256 timestamp;   // Thời gian tạo
     }
 
-    // Cập nhật hồ sơ người dùng
-    function updateUser(
-        string memory _name,
-        string memory _avatar,
-        string memory _bio,
-        uint256 _birthday
-    ) public {
-        require(
-            bytes(users[msg.sender].name).length > 0,
-            "User does not exist"
-        );
+    // Mapping người dùng -> bài viết
+    mapping(address => mapping(uint256 => Post)) public posts;
+    // Mapping bài viết -> danh sách bình luận
+    mapping(uint256 => Comment[]) public comments;
 
-        User storage user = users[msg.sender];
-        user.name = _name;
-        user.avatar = _avatar;
-        user.bio = _bio;
-        user.birthday = _birthday;
+    // Mapping để đếm số bài viết của mỗi người dùng
+    mapping(address => uint256) public postCounts;
+
+    uint256 public totalPosts; // Tổng số bài viết (ID duy nhất)
+
+    function createPost(string memory _media, string memory _content) public {
+        posts[msg.sender][postCounts[msg.sender]] = Post({
+            id: totalPosts,           // Sử dụng totalPosts làm ID
+            user: msg.sender,
+            media: _media,
+            content: _content,
+            timestamp: block.timestamp,
+            commentCount: 0
+        });
+        postCounts[msg.sender]++; // Tăng số bài viết của người dùng
+        totalPosts++;             // Tăng tổng số bài viết (và ID cho bài viết tiếp theo)
     }
 
-    // Thêm follower
-    function addFollower(address userAddress, address followerAddress) public {
-        require(users[userAddress].addr != address(0), "User does not exist");
-        require(
-            users[followerAddress].addr != address(0),
-            "Follower does not exist"
-        );
+    // Thêm bình luận vào bài viết
+    function addComment(address postOwner, uint256 postId, uint256 globalPostId, string memory _media, string memory _content) public {
+        require(globalPostId < totalPosts, "Invalid post ID");
+        require(postId < postCounts[postOwner], "Invalid user post ID");
 
-        uint256 index = followerCount[userAddress];
-        followers[userAddress][index] = followerAddress;
-        followerCount[userAddress]++;
+        Post storage post = posts[postOwner][postId];
+        comments[globalPostId].push(Comment({
+            user: msg.sender,
+            media: _media,
+            content: _content,
+            timestamp: block.timestamp
+        }));
 
-        uint256 followingIndex = followingCount[followerAddress];
-        followings[followerAddress][followingIndex] = userAddress;
-        followingCount[followerAddress]++;
+        post.commentCount++; // Tăng số lượng bình luận cho bài viết
     }
 
-    // Lấy follower của người dùng
-    function getFollower(
-        address userAddress,
-        uint256 index
-    ) public view returns (address) {
-        return followers[userAddress][index];
+    // Lấy thông tin bài viết
+    function getPost(address user, uint256 postId) public view returns (uint256, address, string memory, string memory, uint256, uint256) {
+        require(postId < postCounts[user], "Invalid post ID");
+
+        Post storage post = posts[user][postId];
+        return (post.id, post.user, post.media, post.content, post.timestamp, post.commentCount);
     }
 
-    // Lấy following của người dùng
-    function getFollowing(
-        address userAddress,
-        uint256 index
-    ) public view returns (address) {
-        return followings[userAddress][index];
+    // Lấy thông tin bình luận
+    function getComment(uint256 globalPostId, uint256 commentId) public view returns (address, string memory, string memory, uint256) {
+        require(globalPostId < totalPosts, "Invalid post ID");
+        require(commentId < comments[globalPostId].length, "Invalid comment ID");
+
+        Comment storage comment = comments[globalPostId][commentId];
+        return (comment.user, comment.media, comment.content, comment.timestamp);
     }
 
-    // Xóa hồ sơ người dùng
-    function deleteUser() public {
-        require(
-            bytes(users[msg.sender].name).length > 0,
-            "User does not exist"
-        );
+    // Lấy tổng số bài viết của một người dùng
+    function getPostCount(address user) public view returns (uint256) {
+        return postCounts[user];
+    }
 
-        delete users[msg.sender];
-
-        // Xóa địa chỉ khỏi danh sách
-        for (uint256 i = 0; i < userAddresses.length; i++) {
-            if (userAddresses[i] == msg.sender) {
-                userAddresses[i] = userAddresses[userAddresses.length - 1];
-                userAddresses.pop();
-                break;
-            }
-        }
+    // Lấy tổng số bình luận của một bài viết
+    function getCommentCount(uint256 postId) public view returns (uint256) {
+        return comments[postId].length;
     }
 }
