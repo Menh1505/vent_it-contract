@@ -12,20 +12,20 @@ contract VentProfile {
         uint256 jointTime; // Timestamp của ngày tham gia
         address addr;
         uint256 n_follower;
-        mapping(uint256 => address) follower;
         uint256 n_following;
-        mapping(uint256 => address) following;
     }
 
     mapping(address => User) public users; // Mapping từ địa chỉ tới thông tin người dùng
+    mapping(address => mapping(uint256 => address)) private followers; // Lưu trữ danh sách followers
+    mapping(address => mapping(uint256 => address)) private followings; // Lưu trữ danh sách following
+    mapping(address => uint256) public followerCount; // Số lượng followers của mỗi người dùng
+    mapping(address => uint256) public followingCount; // Số lượng followings của mỗi người dùng
+
     address[] public userAddresses; // Danh sách địa chỉ của tất cả người dùng
-    VentPost public ventPost; // Contract VentPost
 
-    // Khởi tạo contract với địa chỉ VentPost
-    constructor(address _ventPostAddress) {
-        ventPost = VentPost(_ventPostAddress);
+    function getUser(address addr) public view returns (User memory) {
+        return users[addr];
     }
-
     // Tạo hồ sơ người dùng mới
     function createUser(
         string memory _name,
@@ -45,8 +45,6 @@ contract VentProfile {
         newUser.birthday = _birthday;
         newUser.jointTime = block.timestamp; // Lấy timestamp hiện tại làm ngày tham gia
         newUser.addr = msg.sender;
-        newUser.n_follower = 0;
-        newUser.n_following = 0;
 
         userAddresses.push(msg.sender); // Thêm địa chỉ người dùng vào danh sách
     }
@@ -70,6 +68,39 @@ contract VentProfile {
         user.birthday = _birthday;
     }
 
+    // Thêm follower
+    function addFollower(address userAddress, address followerAddress) public {
+        require(users[userAddress].addr != address(0), "User does not exist");
+        require(
+            users[followerAddress].addr != address(0),
+            "Follower does not exist"
+        );
+
+        uint256 index = followerCount[userAddress];
+        followers[userAddress][index] = followerAddress;
+        followerCount[userAddress]++;
+
+        uint256 followingIndex = followingCount[followerAddress];
+        followings[followerAddress][followingIndex] = userAddress;
+        followingCount[followerAddress]++;
+    }
+
+    // Lấy follower của người dùng
+    function getFollower(
+        address userAddress,
+        uint256 index
+    ) public view returns (address) {
+        return followers[userAddress][index];
+    }
+
+    // Lấy following của người dùng
+    function getFollowing(
+        address userAddress,
+        uint256 index
+    ) public view returns (address) {
+        return followings[userAddress][index];
+    }
+
     // Xóa hồ sơ người dùng
     function deleteUser() public {
         require(
@@ -87,35 +118,5 @@ contract VentProfile {
                 break;
             }
         }
-    }
-
-    // Liên kết bài viết với người dùng
-    function createPostForUser(
-        string memory _media,
-        string memory _content
-    ) public {
-        require(
-            bytes(users[msg.sender].name).length > 0,
-            "User does not exist"
-        );
-
-        ventPost.createPost(_media, _content);
-    }
-
-    // Lấy tất cả bài viết của người dùng
-    function getPostsOfUser(address user) public view returns (uint256) {
-        return ventPost.getPostCount(user);
-    }
-
-    // Lấy thông tin bài viết của người dùng
-    function getPostDetails(
-        address user,
-        uint256 postId
-    )
-        public
-        view
-        returns (address, string memory, string memory, uint256, uint256)
-    {
-        return ventPost.getPost(user, postId);
     }
 }
